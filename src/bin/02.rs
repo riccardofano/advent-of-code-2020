@@ -42,8 +42,24 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(valid_passwords)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let valid_passwords = input
+        .lines()
+        .map(Password::from)
+        .filter(|p| {
+            let chars: Vec<char> = p.password.chars().collect();
+            let letter = &p.letter;
+            matches!(
+                (
+                    chars.get(p.min - 1) == Some(letter),
+                    chars.get(p.max - 1) == Some(letter),
+                ),
+                (true, false) | (false, true)
+            )
+        })
+        .count();
+
+    Some(valid_passwords)
 }
 
 fn main() {
@@ -65,6 +81,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 2);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(1));
     }
 }
