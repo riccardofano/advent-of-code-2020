@@ -1,25 +1,36 @@
-pub fn part_one(input: &str) -> Option<usize> {
-    let lines: Vec<_> = input.lines().collect();
-
+fn count_trees(x_increments: usize, y_increments: usize, lines: &[&str]) -> usize {
     let mut trees_encountered = 0;
-    let mut x = 0;
+    let mut x = x_increments;
+    let mut y = y_increments;
 
-    for y in 1..lines.len() {
-        x += 3;
-
+    while y < lines.len() {
         let columns = lines[y].as_bytes();
         let index = x % columns.len();
 
         if let b'#' = columns[index] {
             trees_encountered += 1
         }
+        x += x_increments;
+        y += y_increments;
     }
-
-    Some(trees_encountered)
+    trees_encountered
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_one(input: &str) -> Option<usize> {
+    let lines: Vec<_> = input.lines().collect();
+    Some(count_trees(3, 1, &lines))
+}
+
+pub fn part_two(input: &str) -> Option<usize> {
+    let lines: Vec<_> = input.lines().collect();
+
+    let slopes: [(usize, usize); 5] = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
+    let result = slopes
+        .into_iter()
+        .map(|(right, down)| count_trees(right, down, &lines))
+        .product();
+
+    Some(result)
 }
 
 fn main() {
@@ -41,6 +52,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 3);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(336));
     }
 }
