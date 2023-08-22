@@ -12,6 +12,40 @@ struct Document {
     cid: Option<String>, // (Country ID)
 }
 
+impl Document {
+    fn is_valid(&self) -> bool {
+        let (height, unit) = self.hgt.split_at(self.hgt.len() - 2);
+        let Ok(height) = height.parse() else {
+            return false
+        };
+        let valid_height = match unit {
+            "cm" => (150..=193).contains(&height),
+            "in" => (59..=76).contains(&height),
+            _ => false,
+        };
+
+        let valid_birth_year = (1920..=2002).contains(&self.byr.parse().unwrap_or(0));
+        let valid_issue_year = (2010..=2020).contains(&self.iyr.parse().unwrap_or(0));
+        let valid_exp_year = (2020..=2030).contains(&self.eyr.parse().unwrap_or(0));
+
+        let valid_hair_color = self.hcl.starts_with('#')
+            && self.hcl.len() == 7
+            && self.hcl.chars().skip(1).all(|c| c.is_ascii_hexdigit());
+
+        let valid_eye_color =
+            ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"].contains(&self.ecl.as_str());
+        let valid_pid = self.pid.len() == 9 && self.pid.chars().all(|c| c.is_ascii_digit());
+
+        valid_height
+            && valid_birth_year
+            && valid_issue_year
+            && valid_exp_year
+            && valid_hair_color
+            && valid_eye_color
+            && valid_pid
+    }
+}
+
 impl TryFrom<&str> for Document {
     type Error = String;
 
@@ -47,8 +81,17 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(valid_documents)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let documents: Vec<_> = input.split("\n\n").collect();
+
+    let valid_documents = documents
+        .into_iter()
+        .map(Document::try_from)
+        .filter_map(Result::ok)
+        .filter(|d| d.is_valid())
+        .count();
+
+    Some(valid_documents)
 }
 
 fn main() {
@@ -69,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let input = advent_of_code::read_file("examples", 4);
-        assert_eq!(part_two(&input), None);
+        let input = include_str!("../examples/04-2.txt");
+        assert_eq!(part_two(input), Some(4));
     }
 }
