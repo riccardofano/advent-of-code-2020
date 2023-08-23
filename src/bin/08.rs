@@ -3,60 +3,71 @@ use std::collections::HashSet;
 #[derive(Debug)]
 enum InstructionKind {
     Nop,
-    Acc(isize),
-    Jmp(isize),
+    Acc,
+    Jmp,
 }
 
-impl InstructionKind {
+struct Instruction {
+    kind: InstructionKind,
+    value: isize,
+}
+
+impl Instruction {
     fn parse(line: &str) -> Self {
         let (instruction, amount) = line
             .split_once(' ')
             .expect("Could not find a space between the instruction and the amount");
 
-        match instruction {
-            "nop" => Self::Nop,
-            "acc" => Self::Acc(Self::parse_amount(amount)),
-            "jmp" => Self::Jmp(Self::parse_amount(amount)),
+        let value = amount
+            .parse()
+            .expect("Could not parse value of the instruction");
+        let kind = match instruction {
+            "nop" => InstructionKind::Nop,
+            "acc" => InstructionKind::Acc,
+            "jmp" => InstructionKind::Jmp,
             _ => unreachable!(),
-        }
-    }
+        };
 
-    fn parse_amount(amount: &str) -> isize {
-        let (sign, number) = amount.split_at(1);
-        let number: isize = number.parse().expect("Expected a valid number");
-        match sign {
-            "+" => number,
-            "-" => -number,
-            _ => unreachable!(),
+        Self { kind, value }
+    }
+}
+
+struct Program {
+    instructions: Vec<Instruction>,
+    pointer: isize,
+    accumulator: isize,
+}
+
+impl Program {
+    fn parse(input: &str) -> Self {
+        let instructions = input.lines().map(Instruction::parse).collect();
+        Self {
+            instructions,
+            pointer: 0,
+            accumulator: 0,
         }
     }
 }
 
 pub fn part_one(input: &str) -> Option<isize> {
-    let lines: Vec<_> = input.lines().collect();
-    let mut seen: HashSet<isize> = HashSet::with_capacity(lines.len());
-    let mut accumulator = 0;
-    let mut i = 0;
+    let mut program = Program::parse(input);
+    let mut seen: HashSet<isize> = HashSet::default();
 
-    loop {
-        if seen.contains(&i) {
+    while program.pointer < program.instructions.len() as isize {
+        if !seen.insert(program.pointer) {
             break;
-        };
-        seen.insert(i);
-
-        match InstructionKind::parse(lines[i as usize]) {
-            InstructionKind::Nop => {}
-            InstructionKind::Acc(x) => accumulator += x,
-            InstructionKind::Jmp(x) => {
-                i += x;
-                continue;
-            }
         }
 
-        i += 1;
+        let current_instruction = &program.instructions[program.pointer as usize];
+        program.pointer += 1;
+        match current_instruction.kind {
+            InstructionKind::Nop => {}
+            InstructionKind::Acc => program.accumulator += current_instruction.value,
+            InstructionKind::Jmp => program.pointer += current_instruction.value - 1,
+        };
     }
 
-    Some(accumulator)
+    Some(program.accumulator)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
