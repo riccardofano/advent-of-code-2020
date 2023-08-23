@@ -51,7 +51,33 @@ fn contains_bag(rules: &Rules, node: &Bag, needle: &Bag) -> bool {
     false
 }
 
-pub fn part_one(input: &str) -> Option<u32> {
+fn reverse_rules(rules: &Rules) -> Rules {
+    let mut reverse: Rules = Default::default();
+
+    for (container_bag, contained_bags) in rules.iter() {
+        for bag in contained_bags.iter() {
+            let entry = reverse.entry(container_bag.clone()).or_insert(Vec::new());
+            entry.push(bag.clone())
+        }
+    }
+
+    reverse
+}
+
+fn count_bags(rules: &Rules, current: &Bag) -> usize {
+    let Some(contained) = rules.get(current) else {
+        return 0;
+    };
+
+    let sum = contained
+        .iter()
+        .map(|(amount, bag)| amount + (amount * count_bags(rules, bag)))
+        .sum::<usize>();
+
+    sum
+}
+
+pub fn part_one(input: &str) -> Option<usize> {
     let rules = parse_rules(input);
     let bag_to_find: Bag = ("shiny".into(), "gold".into());
 
@@ -65,8 +91,12 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(times_found)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let rules = parse_rules(input);
+    let our_bag: Bag = ("shiny".into(), "gold".into());
+    let rules = reverse_rules(&rules);
+
+    Some(count_bags(&rules, &our_bag))
 }
 
 fn main() {
@@ -88,6 +118,9 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 7);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(32));
+
+        let input = include_str!("../examples/07-2.txt");
+        assert_eq!(part_two(input), Some(126));
     }
 }
