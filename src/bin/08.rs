@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum InstructionKind {
     Nop,
     Acc,
     Jmp,
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Instruction {
     kind: InstructionKind,
     value: isize,
@@ -32,6 +33,7 @@ impl Instruction {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Program {
     instructions: Vec<Instruction>,
     pointer: isize,
@@ -47,31 +49,48 @@ impl Program {
             accumulator: 0,
         }
     }
+
+    fn run_to_end(&mut self) -> Option<isize> {
+        let mut seen: HashSet<isize> = HashSet::default();
+
+        while self.pointer < self.instructions.len() as isize {
+            if !seen.insert(self.pointer) {
+                return None;
+            }
+
+            let current_instruction = &self.instructions[self.pointer as usize];
+            self.pointer += 1;
+            match current_instruction.kind {
+                InstructionKind::Nop => {}
+                InstructionKind::Acc => self.accumulator += current_instruction.value,
+                InstructionKind::Jmp => self.pointer += current_instruction.value - 1,
+            };
+        }
+
+        Some(self.accumulator)
+    }
 }
 
 pub fn part_one(input: &str) -> Option<isize> {
     let mut program = Program::parse(input);
-    let mut seen: HashSet<isize> = HashSet::default();
-
-    while program.pointer < program.instructions.len() as isize {
-        if !seen.insert(program.pointer) {
-            break;
-        }
-
-        let current_instruction = &program.instructions[program.pointer as usize];
-        program.pointer += 1;
-        match current_instruction.kind {
-            InstructionKind::Nop => {}
-            InstructionKind::Acc => program.accumulator += current_instruction.value,
-            InstructionKind::Jmp => program.pointer += current_instruction.value - 1,
-        };
-    }
-
+    program.run_to_end();
     Some(program.accumulator)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<isize> {
+    let program = Program::parse(input);
+
+    (0..program.instructions.len()).find_map(|i| {
+        let mut test_program = program.clone();
+
+        let new_instruction = match test_program.instructions[i].kind {
+            InstructionKind::Acc => return None,
+            InstructionKind::Nop => InstructionKind::Jmp,
+            InstructionKind::Jmp => InstructionKind::Nop,
+        };
+        test_program.instructions[i].kind = new_instruction;
+        test_program.run_to_end()
+    })
 }
 
 fn main() {
@@ -93,6 +112,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 8);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(8));
     }
 }
