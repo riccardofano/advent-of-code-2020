@@ -67,10 +67,48 @@ impl Instruction {
 }
 
 #[derive(Debug, Clone, Copy)]
+struct Waypoint {
+    vertical_offset: isize,
+    horizonal_offset: isize,
+}
+impl Waypoint {
+    fn increase_direction(&mut self, direction: Direction, value: isize) {
+        match direction {
+            Direction::North => self.vertical_offset += value,
+            Direction::South => self.vertical_offset -= value,
+            Direction::East => self.horizonal_offset += value,
+            Direction::West => self.horizonal_offset -= value,
+        }
+    }
+
+    fn turn_left(&mut self) {
+        let temp = self.horizonal_offset;
+        self.horizonal_offset = -self.vertical_offset;
+        self.vertical_offset = temp;
+    }
+
+    fn turn_right(&mut self) {
+        let temp = self.horizonal_offset;
+        self.horizonal_offset = self.vertical_offset;
+        self.vertical_offset = -temp;
+    }
+}
+
+impl Default for Waypoint {
+    fn default() -> Self {
+        Self {
+            vertical_offset: 1,
+            horizonal_offset: 10,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct State {
     facing: Direction,
     vertical_distance: isize,
-    horizonal_distance: isize,
+    horizontal_distance: isize,
+    waypoint: Waypoint,
 }
 
 impl State {
@@ -91,12 +129,32 @@ impl State {
         }
     }
 
+    fn next_with_waypoint(&mut self, instruction: &Instruction) {
+        match instruction.action {
+            Action::Direction(d) => self.waypoint.increase_direction(d, instruction.value),
+            Action::Forward => {
+                self.vertical_distance += self.waypoint.vertical_offset * instruction.value;
+                self.horizontal_distance += self.waypoint.horizonal_offset * instruction.value;
+            }
+            Action::Left => {
+                for _ in 0..(instruction.value / 90) {
+                    self.waypoint.turn_left();
+                }
+            }
+            Action::Right => {
+                for _ in 0..(instruction.value / 90) {
+                    self.waypoint.turn_right();
+                }
+            }
+        }
+    }
+
     fn increase_direction(&mut self, direction: Direction, value: isize) {
         match direction {
             Direction::North => self.vertical_distance += value,
             Direction::South => self.vertical_distance -= value,
-            Direction::East => self.horizonal_distance += value,
-            Direction::West => self.horizonal_distance -= value,
+            Direction::East => self.horizontal_distance += value,
+            Direction::West => self.horizontal_distance -= value,
         }
     }
 }
@@ -106,7 +164,8 @@ impl Default for State {
         Self {
             facing: Direction::East,
             vertical_distance: 0,
-            horizonal_distance: 0,
+            horizontal_distance: 0,
+            waypoint: Waypoint::default(),
         }
     }
 }
@@ -116,16 +175,25 @@ pub fn part_one(input: &str) -> Option<isize> {
 
     for line in input.lines() {
         let instruction = Instruction::parse(line);
-        eprintln!("{:?} {:?}", state, instruction);
+        // eprintln!("{:?} {:?}", state, instruction);
         state.next(&instruction);
     }
 
-    dbg!(&state);
-    Some(state.horizonal_distance.abs() + state.vertical_distance.abs())
+    // dbg!(&state);
+    Some(state.horizontal_distance.abs() + state.vertical_distance.abs())
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<isize> {
+    let mut state = State::default();
+
+    for line in input.lines() {
+        let instruction = Instruction::parse(line);
+        // eprintln!("{:?} {:?}", state, instruction);
+        state.next_with_waypoint(&instruction);
+    }
+
+    // dbg!(&state);
+    Some(state.horizontal_distance.abs() + state.vertical_distance.abs())
 }
 
 fn main() {
@@ -147,6 +215,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 12);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(286));
     }
 }
