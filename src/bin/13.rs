@@ -36,7 +36,28 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    None
+    let mut lines = input.lines();
+    let _original_timestamp: usize = lines.next().unwrap().parse().unwrap();
+    let buses: Vec<Bus> = lines.next().unwrap().split(',').map(Bus::parse).collect();
+
+    let mut current_timestamp = 1;
+    let mut wait_time = 1;
+
+    for (i, bus) in buses.iter().enumerate() {
+        let Bus::Id(id) = bus else {
+            continue;
+        };
+
+        loop {
+            if (current_timestamp + i) % id == 0 {
+                wait_time *= id;
+                break;
+            }
+            current_timestamp += wait_time;
+        }
+    }
+
+    Some(current_timestamp)
 }
 
 fn main() {
@@ -58,6 +79,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 13);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(1068781));
     }
 }
