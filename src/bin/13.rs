@@ -18,15 +18,20 @@ impl Bus {
 pub fn part_one(input: &str) -> Option<usize> {
     let mut lines = input.lines();
     let original_timestamp: usize = lines.next().unwrap().parse().unwrap();
-    let buses: Vec<Bus> = lines.next().unwrap().split(',').map(Bus::parse).collect();
+    let buses: Vec<usize> = lines
+        .next()
+        .unwrap()
+        .split(',')
+        .map(Bus::parse)
+        .filter_map(|b| match b {
+            Bus::X => None,
+            Bus::Id(id) => Some(id),
+        })
+        .collect();
 
     let mut current_timestamp = original_timestamp;
     loop {
-        for bus in &buses {
-            let Bus::Id(id) = bus else {
-                continue;
-            };
-
+        for id in &buses {
             if current_timestamp % id == 0 {
                 return Some((current_timestamp - original_timestamp) * id);
             }
@@ -44,10 +49,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     let mut wait_time = 1;
 
     for (i, bus) in buses.iter().enumerate() {
-        let Bus::Id(id) = bus else {
-            continue;
-        };
-
+        let Bus::Id(id) = bus else { continue };
         loop {
             if (current_timestamp + i) % id == 0 {
                 wait_time *= id;
