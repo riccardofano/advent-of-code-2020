@@ -30,8 +30,34 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(last_spoken)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let starting_numbers = input
+        .trim()
+        .split(',')
+        .map(|l| l.parse::<usize>().unwrap())
+        .collect::<Vec<_>>();
+
+    let mut current_turn = 1;
+    let mut spoken_numbers = HashMap::<usize, usize>::new();
+
+    for number in starting_numbers {
+        spoken_numbers.insert(number, current_turn);
+        current_turn += 1;
+    }
+
+    // NOTE: assumes all the starting numbers are different
+    let mut last_spoken = 0;
+    while current_turn != 30000000 {
+        let next_spoken = match spoken_numbers.get(&last_spoken) {
+            Some(last_turn_spoken) => current_turn - last_turn_spoken,
+            None => 0,
+        };
+        spoken_numbers.insert(last_spoken, current_turn);
+        last_spoken = next_spoken;
+        current_turn += 1;
+    }
+
+    Some(last_spoken)
 }
 
 fn main() {
