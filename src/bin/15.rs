@@ -31,7 +31,7 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 const LAST_TURN_PART_TWO: usize = 30_000_000;
-const LOW_NUMBER_CACHE_BOUNDARY: usize = LAST_TURN_PART_TWO / 50;
+const LOW_NUMBER_CACHE_BOUNDARY: usize = LAST_TURN_PART_TWO / 1000;
 
 pub fn part_two(input: &str) -> Option<usize> {
     let starting_numbers = input
