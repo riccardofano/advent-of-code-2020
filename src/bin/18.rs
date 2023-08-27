@@ -19,11 +19,14 @@ fn evaluate_operation(left: usize, operator: u8, right: usize) -> Option<usize> 
     }
 }
 
-fn evaluate_literal(iterator: &mut Peekable<impl Iterator<Item = u8>>) -> Option<usize> {
+fn evaluate_literal(
+    iterator: &mut Peekable<impl Iterator<Item = u8>>,
+    is_advanced: bool,
+) -> Option<usize> {
     match iterator.peek()? {
         b'(' => {
             iterator.next()?;
-            let result = evaluate_expression(iterator);
+            let result = evaluate_expression(iterator, is_advanced);
             match iterator.next()? {
                 b')' => result,
                 _ => panic!("End wasn't a )"),
@@ -33,11 +36,18 @@ fn evaluate_literal(iterator: &mut Peekable<impl Iterator<Item = u8>>) -> Option
     }
 }
 
-fn evaluate_expression(iterator: &mut Peekable<impl Iterator<Item = u8>>) -> Option<usize> {
-    let mut value = evaluate_literal(iterator)?;
+fn evaluate_expression(
+    iterator: &mut Peekable<impl Iterator<Item = u8>>,
+    is_advanced: bool,
+) -> Option<usize> {
+    let mut value = evaluate_literal(iterator, is_advanced)?;
     while iterator.peek()? != &b')' {
         let operator = iterator.next()?;
-        let right_value = evaluate_literal(iterator)?;
+        let right_value = if is_advanced && operator == b'*' {
+            evaluate_expression(iterator, is_advanced)?
+        } else {
+            evaluate_literal(iterator, is_advanced)?
+        };
         value = evaluate_operation(value, operator, right_value)?;
     }
 
@@ -55,14 +65,27 @@ pub fn part_one(input: &str) -> Option<usize> {
             .copied()
             .peekable();
 
-        sum += evaluate_expression(&mut iterator)?
+        sum += evaluate_expression(&mut iterator, false)?
     }
 
     Some(sum)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    None
+    let mut sum = 0;
+    for line in input.lines() {
+        let mut iterator = line
+            .as_bytes()
+            .iter()
+            .chain(&[b')'])
+            .filter(|&&b| b != b' ')
+            .copied()
+            .peekable();
+
+        sum += evaluate_expression(&mut iterator, true)?
+    }
+
+    Some(sum)
 }
 
 fn main() {
@@ -90,8 +113,14 @@ mod tests {
 
     #[test]
     fn test_part_two() {
+        let expected_results = [231, 51, 46, 1445, 669060, 23340];
         let mut input = advent_of_code::read_file("examples", 18);
 
-        assert_eq!(part_two(&input), None);
+        input.push_str("\n1 + (2 * 3) + (4 * (5 + 6))");
+        input.push_str("\n2 * 3 + (4 * 5)");
+        input.push_str("\n5 + (8 * 3 + 9 + 3 * 4 * 3)");
+        input.push_str("\n5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))");
+        input.push_str("\n((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2");
+        assert_eq!(part_two(&input), Some(expected_results.iter().sum()));
     }
 }
