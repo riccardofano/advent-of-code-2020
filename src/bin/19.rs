@@ -119,7 +119,26 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let (rules, codes) = input.split_once("\n\n").unwrap();
+    let strings_to_match = codes.lines().collect::<Vec<_>>();
+
+    let mut rules = parse_rules(rules);
+    *rules.get_mut(&8).unwrap() = parse_rule("42 | 42 8");
+    *rules.get_mut(&11).unwrap() = parse_rule("42 31 | 42 11 31");
+
+    let zero_rule = rules.get(&0).unwrap();
+
+    let mut count = 0;
+    for line in strings_to_match {
+        for matched in zero_rule.matches(&rules, line) {
+            if matched.is_empty() {
+                count += 1;
+                break;
+            }
+        }
+    }
+
+    Some(count)
 }
 
 fn main() {
@@ -143,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let input = advent_of_code::read_file("examples", 19);
-        assert_eq!(part_two(&input), None);
+        let input = include_str!("../examples/19-2.txt");
+        assert_eq!(part_two(input), Some(12));
     }
 }
