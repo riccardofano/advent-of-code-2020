@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use regex::Regex;
+
 #[derive(Debug, Clone)]
 enum Rule {
     Literal(String),
@@ -42,12 +44,36 @@ fn parse_and(indices: &str) -> Vec<usize> {
         .unwrap()
 }
 
-pub fn part_one(input: &str) -> Option<u32> {
+fn build_regex_string(rule: &Rule, all_rules: &HashMap<usize, Rule>) -> String {
+    match rule {
+        Rule::Literal(s) => s.clone(),
+        Rule::And(rules) => rules
+            .iter()
+            .map(|r| build_regex_string(all_rules.get(r).unwrap(), all_rules))
+            .collect::<String>(),
+        Rule::Or(left, right) => {
+            let left = build_regex_string(left, all_rules);
+            let right = build_regex_string(right, all_rules);
+            format!("({left}|{right})")
+        }
+    }
+}
+
+pub fn part_one(input: &str) -> Option<usize> {
     let (rules, codes) = input.split_once("\n\n").unwrap();
+    let strings_to_match = codes.lines().collect::<Vec<_>>();
 
-    dbg!(parse_rules(rules));
+    let all_rules = parse_rules(rules);
+    let zero_rule = all_rules.get(&0).unwrap();
+    let regex = format!("^{}$", build_regex_string(zero_rule, &all_rules));
 
-    None
+    let re = Regex::new(&regex).unwrap();
+    let matched = strings_to_match
+        .iter()
+        .filter_map(|l| re.find(l))
+        .collect::<Vec<_>>();
+
+    Some(matched.len())
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
