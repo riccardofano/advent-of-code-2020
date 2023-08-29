@@ -56,6 +56,36 @@ impl Rule {
             }
         }
     }
+
+    fn parse(instructions: &str) -> Self {
+        if instructions.contains('\"') {
+            return Rule::Literal(instructions.chars().nth(1).unwrap());
+        };
+
+        match instructions.split_once('|') {
+            None => Rule::parse_and(instructions),
+            Some((left, right)) => {
+                let left_rule = Rule::parse_and(left);
+                let right_rule = Rule::parse_and(right);
+                Rule::Or(Box::new(left_rule), Box::new(right_rule))
+            }
+        }
+    }
+
+    fn parse_and(indices: &str) -> Self {
+        let indices = indices
+            .split_whitespace()
+            .map(str::parse)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        match indices.len() {
+            1 => Rule::Single(indices[0]),
+            2 => Rule::And2(indices[0], indices[1]),
+            3 => Rule::And3(indices[0], indices[1], indices[2]),
+            _ => unreachable!(),
+        }
+    }
 }
 
 fn parse_rules(input: &str) -> HashMap<usize, Rule> {
@@ -63,39 +93,9 @@ fn parse_rules(input: &str) -> HashMap<usize, Rule> {
         .lines()
         .map(|l| {
             let (index, instructions) = l.split_once(": ").unwrap();
-            (index.parse().unwrap(), parse_rule(instructions))
+            (index.parse().unwrap(), Rule::parse(instructions))
         })
         .collect()
-}
-
-fn parse_rule(instructions: &str) -> Rule {
-    if instructions.contains('\"') {
-        return Rule::Literal(instructions.chars().nth(1).unwrap());
-    };
-
-    match instructions.split_once('|') {
-        None => parse_and(instructions),
-        Some((left, right)) => {
-            let left_rule = parse_and(left);
-            let right_rule = parse_and(right);
-            Rule::Or(Box::new(left_rule), Box::new(right_rule))
-        }
-    }
-}
-
-fn parse_and(indices: &str) -> Rule {
-    let indices = indices
-        .split_whitespace()
-        .map(str::parse)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
-
-    match indices.len() {
-        1 => Rule::Single(indices[0]),
-        2 => Rule::And2(indices[0], indices[1]),
-        3 => Rule::And3(indices[0], indices[1], indices[2]),
-        _ => unreachable!(),
-    }
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
@@ -123,8 +123,8 @@ pub fn part_two(input: &str) -> Option<u32> {
     let strings_to_match = codes.lines().collect::<Vec<_>>();
 
     let mut rules = parse_rules(rules);
-    *rules.get_mut(&8).unwrap() = parse_rule("42 | 42 8");
-    *rules.get_mut(&11).unwrap() = parse_rule("42 31 | 42 11 31");
+    *rules.get_mut(&8).unwrap() = Rule::parse("42 | 42 8");
+    *rules.get_mut(&11).unwrap() = Rule::parse("42 31 | 42 11 31");
 
     let zero_rule = rules.get(&0).unwrap();
 
