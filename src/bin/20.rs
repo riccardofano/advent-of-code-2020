@@ -1,5 +1,12 @@
 use std::{collections::HashSet, fmt::Debug};
 
+const TILE_SIZE: usize = 10;
+const MONSTER: [&str; 3] = [
+    "                  # ",
+    "#    ##    ##    ###",
+    " #  #  #  #  #  #   ",
+];
+
 #[derive(Clone)]
 struct Tile {
     id: usize,
@@ -25,23 +32,6 @@ impl Tile {
         }
     }
 
-    fn rotate(&mut self) {
-        let size = self.pixels.len();
-        let mut rotated = self.pixels.clone();
-        for row in 0..size {
-            for col in 0..size {
-                rotated[row][col] = self.pixels[col][size - 1 - row];
-            }
-        }
-        self.pixels = rotated
-    }
-
-    fn flip(&mut self) {
-        for row in self.pixels.iter_mut() {
-            row.reverse();
-        }
-    }
-
     fn can_connect_below(&self, other: &Tile) -> bool {
         self.pixels.last() == other.pixels.first()
     }
@@ -64,6 +54,23 @@ impl Debug for Tile {
             writeln!(f, "{}", std::str::from_utf8(row).unwrap())?;
         }
         Ok(())
+    }
+}
+
+fn rotate(image: &mut Vec<Vec<u8>>) {
+    let size = image.len();
+    let mut rotated = image.clone();
+    for (row, line) in rotated.iter_mut().enumerate() {
+        for (col, pixel) in line.iter_mut().enumerate() {
+            *pixel = image[col][size - 1 - row];
+        }
+    }
+    *image = rotated
+}
+
+fn flip(image: &mut [Vec<u8>]) {
+    for row in image.iter_mut() {
+        row.reverse();
     }
 }
 
@@ -105,9 +112,9 @@ impl Grid {
             for _flips in 0..2 {
                 for _rotations in 0..4 {
                     tiles.push(tile.clone());
-                    tile.rotate();
+                    rotate(&mut tile.pixels);
                 }
-                tile.flip();
+                flip(&mut tile.pixels);
             }
         }
         tiles
@@ -169,8 +176,81 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(result)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+fn assemble_picture(tilemap: &[Vec<Tile>], grid_size: usize) -> Vec<Vec<u8>> {
+    let mut picture = Vec::new();
+    let total_grid_size = grid_size * TILE_SIZE;
+    for row in 0..total_grid_size {
+        if row % TILE_SIZE == 0 || row % TILE_SIZE == TILE_SIZE - 1 {
+            continue;
+        }
+        let mut full_row = Vec::new();
+        for col in 0..total_grid_size {
+            if col % TILE_SIZE == 0 || col % TILE_SIZE == TILE_SIZE - 1 {
+                continue;
+            }
+            let pixel =
+                tilemap[row / TILE_SIZE][col / TILE_SIZE].pixels[row % TILE_SIZE][col % TILE_SIZE];
+            full_row.push(pixel);
+        }
+        picture.push(full_row);
+    }
+
+    picture
+}
+
+fn count_monsters(picture: &mut Vec<Vec<u8>>) {
+    for _flips in 0..2 {
+        for _rotations in 0..4 {
+            for row in 0..(picture.len() - MONSTER.len() + 1) {
+                for col in 0..(picture[0].len() - MONSTER[0].len() + 1) {
+                    try_marking_monster(picture, row, col);
+                }
+            }
+            rotate(picture);
+        }
+        flip(picture);
+    }
+}
+
+fn try_marking_monster(picture: &mut [Vec<u8>], start_row: usize, start_col: usize) -> bool {
+    for (monster_row, monster_line) in MONSTER.iter().enumerate() {
+        for (monster_col, monster_char) in monster_line.bytes().enumerate() {
+            let tile_char = picture[start_row + monster_row][start_col + monster_col];
+            if monster_char == b'#' && tile_char != b'#' {
+                return false;
+            }
+        }
+    }
+
+    for (monster_row, monster_line) in MONSTER.iter().enumerate() {
+        for (monster_col, monster_char) in monster_line.bytes().enumerate() {
+            if monster_char == b'#' {
+                picture[start_row + monster_row][start_col + monster_col] = b'O';
+            }
+        }
+    }
+    true
+}
+
+pub fn part_two(input: &str) -> Option<usize> {
+    let tiles = Grid::parse_tiles(input);
+    let mut grid = Grid::new(&tiles);
+
+    grid.search(0, 0, &tiles, &mut HashSet::new());
+
+    let Some(solution) = grid.solution else {
+        return None;
+    };
+
+    let mut picture = assemble_picture(&solution, grid.size);
+    count_monsters(&mut picture);
+    // for row in &picture {
+    //     println!("{}", std::str::from_utf8(row).unwrap());
+    // }
+
+    let sea_harshness = picture.iter().flatten().filter(|&&b| b == b'#').count();
+
+    Some(sea_harshness)
 }
 
 fn main() {
@@ -192,6 +272,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 20);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(273));
     }
 }
