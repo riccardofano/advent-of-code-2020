@@ -9,7 +9,7 @@ fn parse_line(line: &str) -> (&str, Option<&str>) {
     }
 }
 
-pub fn part_one(input: &str) -> Option<usize> {
+fn find_allergens(input: &str) -> (HashMap<&str, usize>, HashMap<&str, &str>) {
     let mut ingredients_seen: HashMap<&str, usize> = HashMap::new();
     let mut list_with_allergens: HashMap<&str, Vec<HashSet<&str>>> = HashMap::new();
 
@@ -57,7 +57,11 @@ pub fn part_one(input: &str) -> Option<usize> {
         }
     }
 
-    dbg!(&confirmed_allergens);
+    (ingredients_seen, confirmed_allergens)
+}
+
+pub fn part_one(input: &str) -> Option<usize> {
+    let (ingredients_seen, confirmed_allergens) = find_allergens(input);
 
     let mut count = 0;
     for (name, times_seen) in ingredients_seen {
@@ -69,8 +73,19 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(count)
 }
 
-pub fn part_two(input: &str) -> Option<usize> {
-    None
+pub fn part_two(input: &str) -> Option<String> {
+    let (_, confirmed_allergens) = find_allergens(input);
+
+    let mut allergens: Vec<(&str, &str)> = confirmed_allergens.into_iter().collect();
+    allergens.sort_by(|a, b| a.1.cmp(b.1));
+
+    Some(
+        allergens
+            .iter()
+            .map(|(k, _)| *k)
+            .collect::<Vec<&str>>()
+            .join(","),
+    )
 }
 
 fn main() {
@@ -92,6 +107,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 21);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some("mxmxvkd,sqjhc,fvjkl".to_string()));
     }
 }
