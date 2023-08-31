@@ -1,101 +1,86 @@
-#[derive(Debug, Clone, Copy)]
-struct Cup {
-    index: usize,
-    label: usize,
+struct Game {
+    current: usize,
+    circle: Vec<usize>,
 }
-impl Cup {
-    fn new(index: usize, label: usize) -> Self {
-        Self { index, label }
-    }
-    fn from((index, label): (usize, &usize)) -> Self {
+
+impl Game {
+    fn parse(input: &str) -> Self {
+        let cups = input
+            .trim()
+            .chars()
+            .map(|c| c.to_digit(10).unwrap() as usize)
+            .collect::<Vec<usize>>();
+
+        // The index of the cups is their actual value, the value the index holds is the cup they point to.
+        // So using example "3->8->9->1->2->5->4->6->7" (and 7 wraps around to 3)
+
+        // There's an extra zero at the start so we don't have to wrap the index around on every operation
+        // Inserting them on their proper spot we'll end up with
+        // [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] <- their index
+        // [0, 2, 5, 8, 6, 4, 7, 3, 9, 1] <- values they point to (the actual result)
+        let mut circle = vec![0; cups.len() + 1];
+        for i in 0..cups.len() {
+            circle[cups[i]] = cups[(i + 1) % cups.len()];
+        }
+
         Self {
-            index,
-            label: *label,
+            current: cups[0],
+            circle,
         }
     }
-}
 
-fn remove_cups(cups: &mut Vec<usize>, at_index: usize, count: usize) -> Vec<usize> {
-    let mut removed = Vec::with_capacity(count);
+    fn step(&mut self) {
+        let a = self.circle[self.current];
+        let b = self.circle[a];
+        let c = self.circle[b];
 
-    for _ in 0..3 {
-        let cup = cups.remove((at_index + 1) % cups.len());
-        removed.push(cup);
-    }
-
-    removed
-}
-
-fn insert_cups(cups: &mut Vec<usize>, to_insert: Vec<usize>, destination: usize) {
-    to_insert
-        .iter()
-        .rev()
-        .for_each(|c| cups.insert(destination, *c))
-}
-
-fn select_next_cup_label(current: usize, cups: &[usize], min: usize) -> Cup {
-    let mut offset = 1;
-    while current - offset >= min {
-        if let Some(cup) = cups
-            .iter()
-            .enumerate()
-            .find(|cup| cup.1 == &(current - offset))
-        {
-            return Cup::from(cup);
+        let mut destination = self.current - 1;
+        if destination == 0 {
+            destination = self.circle.len() - 1;
         }
-        offset += 1;
-    }
-
-    let max_cup = cups.iter().enumerate().max_by(|x, y| x.1.cmp(y.1)).unwrap();
-    Cup::from(max_cup)
-}
-
-fn play_crab_game(current_cup: &mut Cup, cups: &mut Vec<usize>, min_cup: usize) {
-    for _mov in 1..=100 {
-        // println!("--- Move {mov} ---");
-        // println!("Cups: {}", &cups.iter().map(|c| match *c { c if c == current_cup.label => format!("({c})"), _ => c.to_string(), }).collect::<Vec<_>>().join(" "));
-
-        let removed = remove_cups(cups, current_cup.index, 3);
-        // println!("Pick up: {removed:?}");
-        let destination_cup = select_next_cup_label(current_cup.label, cups, min_cup);
-        // println!("Destination: {}", destination_cup.label);
-        // println!();
-
-        insert_cups(cups, removed, destination_cup.index + 1);
-
-        // Scroll the list until the current cup is index 0
-        while cups.iter().position(|c| *c == current_cup.label).unwrap() > 0 {
-            let c = cups.remove(0);
-            cups.push(c);
+        // Check to see if what was going to be the next destination was one of the cups you just picked up
+        // if it was pick the highest in the circle which is always the last element
+        while [a, b, c].contains(&destination) {
+            destination = destination.saturating_sub(1);
+            if destination == 0 {
+                destination = self.circle.len() - 1;
+            }
         }
 
-        *current_cup = Cup::new(1, cups[1]);
-    }
-}
+        // Now we're ready to assign the new order to the cups
+        // Since we removed 3 cups after the current one, the current should now point to what `c` was pointing to
+        // The cups we picked up get moved just after the destination so the `destination cup` points to `a`
+        // and `c` should now point to what `destination` was pointing to.
+        self.circle[self.current] = self.circle[c];
+        let temp = self.circle[destination];
+        self.circle[destination] = a;
+        self.circle[c] = temp;
 
-fn stringify_final_positions(cups: &[usize]) -> String {
-    let len = cups.len();
-    let mut result = String::with_capacity(len);
-    let one_cup = cups.iter().position(|c| *c == 1).unwrap();
-    for i in 0..len - 1 {
-        result.push_str(&cups[(one_cup + 1 + i) % len].to_string());
+        // Finally the new current is what current was pointing to.
+        self.current = self.circle[self.current];
     }
 
-    result
+    fn stringify_positions(&self) -> String {
+        let mut result = String::new();
+
+        let mut i = 1;
+        for _ in 0..self.circle.len() - 2 {
+            result.push_str(&self.circle[i].to_string());
+            i = self.circle[i];
+        }
+
+        result
+    }
 }
 
 pub fn part_one(input: &str) -> Option<String> {
-    let mut cups = input
-        .trim()
-        .chars()
-        .map(|c| c.to_digit(10).unwrap() as usize)
-        .collect::<Vec<_>>();
+    let mut game = Game::parse(input);
 
-    let min_cup = cups.clone().into_iter().min().unwrap();
-    let mut current_cup = Cup::new(0, cups[0]);
-    play_crab_game(&mut current_cup, &mut cups, min_cup);
+    for _ in 0..100 {
+        game.step();
+    }
 
-    Some(stringify_final_positions(&cups))
+    Some(game.stringify_positions())
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
