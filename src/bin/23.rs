@@ -29,6 +29,41 @@ impl Game {
         }
     }
 
+    fn parse_extended(input: &str) -> Self {
+        let cups = input
+            .trim()
+            .chars()
+            .map(|c| c.to_digit(10).unwrap() as usize)
+            .collect::<Vec<usize>>();
+
+        let mut circle = vec![0; 1_000_000 + 1];
+        for i in 0..cups.len() - 1 {
+            circle[cups[i]] = cups[i + 1];
+        }
+
+        // Make last cup in the input point to the value of the first extended cup
+        // in this case the max cup was 9 so the next cup is going to be 10
+        let last_cup = cups[cups.len() - 1];
+        let max_cup = cups.len();
+        circle[last_cup] = max_cup + 1;
+
+        for (i, cup) in circle
+            .iter_mut()
+            .enumerate()
+            .take(1_000_000)
+            .skip(max_cup + 1)
+        {
+            *cup = i + 1;
+        }
+        // Make the last extended value wrap around to the start of input cups
+        *circle.last_mut().unwrap() = cups[0];
+
+        Self {
+            current: cups[0],
+            circle,
+        }
+    }
+
     fn step(&mut self) {
         let a = self.circle[self.current];
         let b = self.circle[a];
@@ -84,7 +119,15 @@ pub fn part_one(input: &str) -> Option<String> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    None
+    let mut game = Game::parse_extended(input);
+
+    for _ in 0..10_000_000 {
+        game.step();
+    }
+
+    let result = game.circle[1] * game.circle[game.circle[1]];
+
+    Some(result)
 }
 
 fn main() {
@@ -106,6 +149,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 23);
-        assert_eq!(part_two(&input), None);
+        assert_eq!(part_two(&input), Some(149245887792));
     }
 }
