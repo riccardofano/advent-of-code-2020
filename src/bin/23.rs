@@ -50,6 +50,40 @@ fn select_next_cup_label(current: usize, cups: &[usize], min: usize) -> Cup {
     Cup::from(max_cup)
 }
 
+fn play_crab_game(current_cup: &mut Cup, cups: &mut Vec<usize>, min_cup: usize) {
+    for _mov in 1..=100 {
+        // println!("--- Move {mov} ---");
+        // println!("Cups: {}", &cups.iter().map(|c| match *c { c if c == current_cup.label => format!("({c})"), _ => c.to_string(), }).collect::<Vec<_>>().join(" "));
+
+        let removed = remove_cups(cups, current_cup.index, 3);
+        // println!("Pick up: {removed:?}");
+        let destination_cup = select_next_cup_label(current_cup.label, cups, min_cup);
+        // println!("Destination: {}", destination_cup.label);
+        // println!();
+
+        insert_cups(cups, removed, destination_cup.index + 1);
+
+        // Scroll the list until the current cup is index 0
+        while cups.iter().position(|c| *c == current_cup.label).unwrap() > 0 {
+            let c = cups.remove(0);
+            cups.push(c);
+        }
+
+        *current_cup = Cup::new(1, cups[1]);
+    }
+}
+
+fn stringify_final_positions(cups: &[usize]) -> String {
+    let len = cups.len();
+    let mut result = String::with_capacity(len);
+    let one_cup = cups.iter().position(|c| *c == 1).unwrap();
+    for i in 0..len - 1 {
+        result.push_str(&cups[(one_cup + 1 + i) % len].to_string());
+    }
+
+    result
+}
+
 pub fn part_one(input: &str) -> Option<String> {
     let mut cups = input
         .trim()
@@ -58,37 +92,10 @@ pub fn part_one(input: &str) -> Option<String> {
         .collect::<Vec<_>>();
 
     let min_cup = cups.clone().into_iter().min().unwrap();
-    let len = cups.len();
-
     let mut current_cup = Cup::new(0, cups[0]);
-    for _mov in 1..=100 {
-        // println!("--- Move {mov} ---");
-        // println!("Cups: {}", &cups.iter().map(|c| match *c { c if c == current_cup.label => format!("({c})"), _ => c.to_string(), }).collect::<Vec<_>>().join(" "));
+    play_crab_game(&mut current_cup, &mut cups, min_cup);
 
-        let removed = remove_cups(&mut cups, current_cup.index, 3);
-        // println!("Pick up: {removed:?}");
-        let destination_cup = select_next_cup_label(current_cup.label, &cups, min_cup);
-        // println!("Destination: {}", destination_cup.label);
-        // println!();
-
-        insert_cups(&mut cups, removed, destination_cup.index + 1);
-
-        // Scroll the list until the current cup is index 0
-        while cups.iter().position(|c| *c == current_cup.label).unwrap() > 0 {
-            let c = cups.remove(0);
-            cups.push(c);
-        }
-
-        current_cup = Cup::new(1, cups[1]);
-    }
-
-    let mut result = String::with_capacity(len);
-    let one_cup = cups.iter().position(|c| *c == 1).unwrap();
-    for i in 0..len - 1 {
-        result.push_str(&cups[(one_cup + 1 + i) % len].to_string());
-    }
-
-    Some(result)
+    Some(stringify_final_positions(&cups))
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
